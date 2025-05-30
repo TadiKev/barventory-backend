@@ -14,29 +14,41 @@ import expenseRoutes from './routes/expenseRoutes.js';
 
 dotenv.config();
 
-// Connect to MongoDB
-await connectDB();
+const startServer = async () => {
+  try {
+    // Connect to MongoDB
+    await connectDB();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+    const app = express();
 
-// Auth
-app.use('/api/auth', authRoutes);
+    // Middleware
+    app.use(cors());
+    app.use(express.json());
 
-// Your existing routes
-app.use('/api/bars', barRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/expenses', expenseRoutes);
+    // Routes
+    app.use('/api/auth', authRoutes);
+    app.use('/api/bars', barRoutes);
+    app.use('/api/products', productRoutes);
+    app.use('/api/inventory', inventoryRoutes);
+    app.use('/api/reports', reportRoutes);
+    app.use('/api/transactions', transactionRoutes);
+    app.use('/api/expenses', expenseRoutes);
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: err.message });
-});
+    // Error handler
+    app.use((err, req, res, next) => {
+      console.error(err.stack);
+      res.status(500).json({ message: err.message });
+    });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1); 
+  }
+};
+
+startServer();
