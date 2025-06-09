@@ -14,6 +14,7 @@ import inventoryRoutes   from './routes/inventoryRoutes.js';
 import reportRoutes      from './routes/reportRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
 import expenseRoutes     from './routes/expenseRoutes.js';
+import transferRoutes from './routes/transferRoutes.js';
 
 dotenv.config();
 
@@ -39,6 +40,8 @@ const startServer = async () => {
     app.use('/api/reports',      reportRoutes);
     app.use('/api/transactions', transactionRoutes);
     app.use('/api/expenses',     expenseRoutes);
+    app.use('/api/transfers', transferRoutes);
+
 
     // 1) Serve static files from the React build folder at <project-root>/build
     const buildPath = path.join(__dirname, '..', 'build');
