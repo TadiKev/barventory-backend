@@ -1,5 +1,3 @@
-// controllers/reportController.js
-
 import mongoose from 'mongoose';
 import asyncHandler from 'express-async-handler';
 import InventoryRecord from '../models/Inventory.js';
@@ -16,7 +14,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
       .json({ error: 'barId, from, and to are required' });
   }
 
-  // 1) Validate barId
+  // Validate barId
   if (!mongoose.Types.ObjectId.isValid(barId)) {
     return res
       .status(400)
@@ -24,13 +22,13 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
   }
   const barObjId = new mongoose.Types.ObjectId(barId);
 
-  // 2) Build date range
+  // Build date range
   const start = new Date(from);
   start.setHours(0, 0, 0, 0);
   const end = new Date(to);
   end.setHours(23, 59, 59, 999);
 
-  // 3) Opening stock: latest record *before* the period
+  // Opening stock: latest record *before* the period
   const [lastBefore] = await InventoryRecord.find({
     bar:  barObjId,
     date: { $lt: start }
@@ -43,7 +41,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
     ? lastBefore.closing * lastBefore.costPrice
     : 0;
 
-  // 4) Period records
+  // Period records
   let periodRecs = await InventoryRecord.find({
     bar:  barObjId,
     date: { $gte: start, $lte: end }
@@ -51,15 +49,43 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
     .populate('product')
     .lean();
 
+  // drop any that lost their product reference
   periodRecs = periodRecs.filter(r => r.product);
 
-  // 5) Purchases = sum(receivedQty * costPrice)
+  // ── INJECT DERIVED SALES HERE ──
+  periodRecs = periodRecs.map(r => {
+    const opening       = r.opening || 0;
+    const received      = r.receivedQty   || 0;
+    const transferIn    = r.transferInQty  || 0;
+    const transferOut   = r.transferOutQty || 0;
+    const actualClosing = r.manualClosing != null
+      ? r.manualClosing
+      : r.closing;
+
+    const derivedSalesQty = 
+      opening + received + transferIn - transferOut - actualClosing;
+
+    const derivedSalesAmt = derivedSalesQty * (r.product.sellingPrice || 0);
+
+    return {
+      ...r,
+      salesQty: r.salesQty > 0
+        ? r.salesQty
+        : derivedSalesQty,
+      salesAmt: r.salesAmt > 0
+        ? r.salesAmt
+        : derivedSalesAmt
+    };
+  });
+  // ────────────────────────────────
+
+  // Purchases = sum(receivedQty * costPrice)
   const purchases = periodRecs.reduce(
     (sum, r) => sum + (r.receivedQty || 0) * r.costPrice,
     0
   );
 
-  // 6) Closing stock: latest record on or before `to`
+  // Closing stock: latest record on or before `to`
   const [lastOnOrBefore] = await InventoryRecord.find({
     bar:  barObjId,
     date: { $lte: end }
@@ -72,14 +98,14 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
     ? lastOnOrBefore.closing * lastOnOrBefore.costPrice
     : 0;
 
-  // 7) Revenue & COGS
+  // Revenue & COGS
   const revenue = periodRecs.reduce((sum, r) => sum + (r.salesAmt || 0), 0);
   const cogs    = periodRecs.reduce(
     (sum, r) => sum + (r.salesQty || 0) * r.costPrice,
     0
   );
 
-  // 8) Expenses
+  // Expenses
   const exps = await Expense.find({
     bar:  barObjId,
     date: { $gte: start, $lte: end }
@@ -87,7 +113,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
   .lean();
   const expenses = exps.reduce((sum, e) => sum + e.amount, 0);
 
-  // 9) By-product breakdown
+  // By-product breakdown
   const byProductMap = new Map();
   periodRecs.forEach(r => {
     const pid = r.product._id.toString();
@@ -107,7 +133,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
   });
   const byProduct = Array.from(byProductMap.values());
 
-  // 10) Daily trend
+  // Daily trend
   const pad = n => String(n).padStart(2, '0');
   const salesByDay = {};
   periodRecs.forEach(r => {
@@ -128,7 +154,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
     });
   }
 
-  // 11) Final metrics
+  // Final metrics
   const grossProfit = revenue - cogs;
   const netProfit   = grossProfit - expenses;
 

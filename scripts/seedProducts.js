@@ -1,71 +1,62 @@
 // scripts/seedProducts.js
-import 'dotenv/config';                   // Load MONGO_URI from .env
+import 'dotenv/config';
 import mongoose from 'mongoose';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import Product from '../models/Product.js'; // ← adjust path if needed
 
-// __dirname workaround in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// 1. Your full product list:
+const products = [
+  { name: 'grants without glass', sellingPrice: 10.00, costPrice: 2.00, profitPerUnit: 8.00 },
+{ name: 'vat 69', sellingPrice: 10.00, costPrice: 2.50, profitPerUnit: 7.50 },
+{ name: 'strawberry lips', sellingPrice: 12.00, costPrice: 1.08, profitPerUnit: 10.92 },
+{ name: 'magic moments', sellingPrice: 8.00, costPrice: 0.00, profitPerUnit: 8.00 },
+{ name: 'jameson', sellingPrice: 20.00, costPrice: 0.00, profitPerUnit: 20.00 },
+{ name: 'hasenranche 750mls', sellingPrice: 15.00, costPrice: 4.58, profitPerUnit: 10.42 },
+{ name: 'jager 1 litre', sellingPrice: 25.00, costPrice: 3.33, profitPerUnit: 21.67 },
+{ name: 'jager 750mls', sellingPrice: 20.00, costPrice: 3.33, profitPerUnit: 16.67 },
+{ name: 'JAGER 20ML', sellingPrice: 2.00, costPrice: 0.58, profitPerUnit: 1.42 },
+{ name: 'strettons pink', sellingPrice: 10.00, costPrice: 2.50, profitPerUnit: 7.50 },
+{ name: 'strettons blue', sellingPrice: 10.00, costPrice: 2.50, profitPerUnit: 7.50 },
+{ name: 'amarula og', sellingPrice: 20.00, costPrice: 3.75, profitPerUnit: 16.25 },
+{ name: 'southern comfort', sellingPrice: 13.00, costPrice: 3.41, profitPerUnit: 9.59 },
+{ name: 'jack daniels', sellingPrice: 20.00, costPrice: 0.00, profitPerUnit: 20.00 },
+{ name: 'belgravia gin', sellingPrice: 10.00, costPrice: 0.00, profitPerUnit: 10.00 },
+{ name: 'pushkin', sellingPrice: 7.00, costPrice: 2.20, profitPerUnit: 4.80 },
+{ name: 'sky vodka', sellingPrice: 20.00, costPrice: 0.00, profitPerUnit: 20.00 },
+{ name: 'datex', sellingPrice: 1.00, costPrice: 0.50, profitPerUnit: 0.50 },
+{ name: 'imperial', sellingPrice: 7.00, costPrice: 1.58, profitPerUnit: 5.42 },
+{ name: 'no.9', sellingPrice: 4.00, costPrice: 0.84, profitPerUnit: 3.16 },
+{ name: 'Famous Grouse', sellingPrice: 12.00, costPrice: 2.41, profitPerUnit: 9.59 },
+{ name: 'mr dowells', sellingPrice: 10.00, costPrice: 0.00, profitPerUnit: 10.00 },
+{ name: '1st Watch', sellingPrice: 13.00, costPrice: 0.00, profitPerUnit: 13.00 }
 
-// Import your Product model
-import Product from '../models/Product.js';
 
-async function main() {
-  // Connect to MongoDB
-  const uri = process.env.MONGO_URI;
-  if (!uri) {
-    console.error('❌ MONGO_URI not defined in .env');
-    process.exit(1);
+];
+
+// 2. Main
+async function seed() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('🌱 Connected to MongoDB');
+
+    for (const p of products) {
+      const filter = { name: p.name };
+      const update = {
+        $set: {
+          costPrice: p.costPrice,
+          sellingPrice: p.sellingPrice,
+          profitPerUnit: p.profitPerUnit
+        }
+      };
+      await Product.updateOne(filter, update, { upsert: true });
+      console.log('✓ Upserted:', p.name);
+    }
+
+    console.log('🎉 All products seeded!');
+  } catch (err) {
+    console.error('❌ Seeding error:', err);
+  } finally {
+    mongoose.disconnect();
   }
-  console.log('🔌 Connecting to', uri);
-  await mongoose.connect(uri);
-
-  // Define products to seed (continued group)
-  const products = [
-    
-
-    // New group to add:
-    { name: '2 keys 750',         category: 'spirits', costPrice: 6.00, sellingPrice: 7.50, lowStockThreshold: 5 },
-    { name: '2 KEYS HONEY',       category: 'spirits', costPrice: 6.00, sellingPrice: 7.50, lowStockThreshold: 5 },
-    { name: '2 keys 200mls',      category: 'spirits', costPrice: 1.50, sellingPrice: 2.00, lowStockThreshold: 10 },
-    { name: 'best cream',         category: 'spirits', costPrice: 11.00, sellingPrice: 12.00, lowStockThreshold: 5 },
-    { name: 'wild africa',        category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: 'grants with glasses',category: 'spirits', costPrice: 12.00, sellingPrice: 13.00, lowStockThreshold: 5 },
-    { name: 'grants without glass',category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: 'vat 69',             category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: 'strawberry lips',    category: 'spirits', costPrice: 12.00, sellingPrice: 13.00, lowStockThreshold: 5 },
-    { name: 'magic moments',      category: 'spirits', costPrice: 8.00, sellingPrice: 9.00, lowStockThreshold: 5 },
-    { name: 'jameson',            category: 'spirits', costPrice: 20.00, sellingPrice: 22.00, lowStockThreshold: 3 },
-    { name: 'hasenranche 750mls', category: 'spirits', costPrice: 15.00, sellingPrice: 16.50, lowStockThreshold: 5 },
-    { name: 'jager 1 litre',      category: 'spirits', costPrice: 25.00, sellingPrice: 27.50, lowStockThreshold: 3 },
-    { name: 'jager 750mls',       category: 'spirits', costPrice: 20.00, sellingPrice: 22.00, lowStockThreshold: 3 },
-    { name: 'JAGER 20ML',         category: 'spirits', costPrice: 2.00, sellingPrice: 2.50, lowStockThreshold: 10 },
-    { name: 'strettons pink',     category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: 'strettons blue',     category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: 'amarula og',         category: 'spirits', costPrice: 15.00, sellingPrice: 16.50, lowStockThreshold: 5 },
-    { name: 'southern comfort',   category: 'spirits', costPrice: 13.00, sellingPrice: 14.50, lowStockThreshold: 5 },
-    { name: 'jack daniels',       category: 'spirits', costPrice: 20.00, sellingPrice: 22.00, lowStockThreshold: 3 },
-    { name: 'belgravia gin',      category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: 'pushkin',            category: 'spirits', costPrice: 7.00, sellingPrice: 8.00, lowStockThreshold: 5 },
-    { name: 'sky vodka',          category: 'spirits', costPrice: 20.00, sellingPrice: 22.00, lowStockThreshold: 3 },
-    { name: 'datex',              category: 'spirits', costPrice: 1.00, sellingPrice: 1.50, lowStockThreshold: 10 },
-    { name: 'imperial',           category: 'spirits', costPrice: 7.00, sellingPrice: 8.00, lowStockThreshold: 5 },
-    { name: 'no.9',               category: 'spirits', costPrice: 4.00, sellingPrice: 5.00, lowStockThreshold: 5 },
-    { name: 'Famous Grouse',      category: 'spirits', costPrice: 12.00, sellingPrice: 13.00, lowStockThreshold: 5 },
-    { name: 'mr dowells',         category: 'spirits', costPrice: 10.00, sellingPrice: 11.00, lowStockThreshold: 5 },
-    { name: '1st Watch',          category: 'spirits', costPrice: 13.00, sellingPrice: 14.00, lowStockThreshold: 5 },
-  ];
-
-  console.log(`🛠️  Inserting ${products.length} products…`);
-  await Product.insertMany(products);
-  console.log('✅ Products seeded successfully');
-
-  await mongoose.disconnect();
-  console.log('🔌 Disconnected from DB');
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+seed();
