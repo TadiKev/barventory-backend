@@ -1,8 +1,10 @@
-// src/routes/bars.js
+// src/routes/barRoutes.js
 
 import express from 'express';
+import { protect, requireAdmin } from '../middleware/auth.js';
 import {
   getBars,
+  getBarById,
   createBar,
   updateBar,
   deleteBar
@@ -10,9 +12,19 @@ import {
 
 const router = express.Router();
 
-router.get('/', getBars);
-router.post('/', createBar);
-router.put('/:id', updateBar);
-router.delete('/:id', deleteBar);
+// All routes under /api/bars are protected
+router.use(protect);
+
+// Admins may see/create/update/delete any bar
+router
+  .route('/')
+  .get(getBars)
+  .post(requireAdmin, createBar);
+
+router
+  .route('/:id')
+  .get(getBarById)
+  .put(requireAdmin, updateBar)
+  .delete(requireAdmin, deleteBar);
 
 export default router;

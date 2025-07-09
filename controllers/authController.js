@@ -2,7 +2,11 @@
 
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Bar from '../models/Bar.js';
+
+const { ObjectId } = mongoose.Types;
 
 // Generate a JWT whose payload contains { userId }
 const generateToken = (userId) =>
@@ -12,29 +16,51 @@ const generateToken = (userId) =>
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
-// @access  Public
+// @access  Admin only (protect this route with requireAdmin middleware)
 export const register = asyncHandler(async (req, res) => {
-  const { username, password, role } = req.body;
-  // default to 'employee' if no role provided
-  const newRole = role || 'employee';
+  const { username, password, role = 'employee', barId } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password are required' });
   }
 
+  // If employee, barId must be provided and valid
+  if (role === 'employee') {
+    if (!barId || !ObjectId.isValid(barId)) {
+      return res.status(400).json({ message: 'Employee must be assigned a valid barId' });
+    }
+    // ensure that bar exists
+    const barExists = await Bar.exists({ _id: barId });
+    if (!barExists) {
+      return res.status(400).json({ message: 'Assigned bar does not exist' });
+    }
+  }
+
+  // prevent duplicate usernames
   const exists = await User.findOne({ username });
   if (exists) {
     return res.status(400).json({ message: 'Username already taken' });
   }
 
-  // create user with specified (or default) role
-  const user = await User.create({ username, password, role: newRole });
+  // create the user, assigning the bar only if employee
+  const user = await User.create({
+    username,
+    password,
+    role,
+    ...(role === 'employee' ? { bar: barId } : {})
+  });
+
+  // populate the bar field for response
+  await user.populate('bar', 'name').execPopulate();
 
   res.status(201).json({
     user: {
       id:       user._id,
       username: user.username,
       role:     user.role,
+      bar:      user.bar
+        ? { id: user.bar._id, name: user.bar.name }
+        : null
     },
     token: generateToken(user._id),
   });
@@ -45,7 +71,9 @@ export const register = asyncHandler(async (req, res) => {
 // @access  Public
 export const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-  const user = await User.findOne({ username });
+
+  // fetch user plus their assigned bar (if any)
+  const user = await User.findOne({ username }).populate('bar', 'name');
 
   if (user && await user.comparePassword(password)) {
     return res.json({
@@ -53,6 +81,9 @@ export const login = asyncHandler(async (req, res) => {
         id:       user._id,
         username: user.username,
         role:     user.role,
+        bar:      user.bar
+          ? { id: user.bar._id, name: user.bar.name }
+          : null
       },
       token: generateToken(user._id),
     });

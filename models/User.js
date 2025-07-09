@@ -5,7 +5,15 @@ import bcrypt   from 'bcryptjs';
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role:     { type: String, enum: ['admin','employee'], default: 'employee' }
+  role:     { type: String, enum: ['admin','employee'], default: 'employee' },
+  bar: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Bar',
+    required: function() {
+      // only require bar if this is an employee
+      return this.role === 'employee';
+    }
+  }
 });
 
 // hash password before save
